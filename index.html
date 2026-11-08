@@ -6,6 +6,9 @@
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="香港地產代理資格考試（EAQE）互動溫習站：考試大綱、溫習手冊、題庫、模擬考試、土地查冊實戰、法例原文。">
 <title>地產代理資格考試 · 互動溫習站</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
 <style>
 /* ==========================================================================
    地產代理資格考試溫習站 — design system
@@ -383,8 +386,13 @@ html[data-theme="dark"] .doc{background:#e9e4d8;color:#1a1a1a}
 
 /* ---------- responsive ---------- */
 @media (max-width:1023px){
-  .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:.25s;box-shadow:var(--shadow-lg)}
+  .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:.25s;box-shadow:var(--shadow-lg);
+    height:100vh;height:100dvh;overflow-y:auto;padding-bottom:24px}
   .sidebar.open{transform:none}
+  .nav-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:39;
+    -webkit-tap-highlight-color:transparent;touch-action:none}
+  .nav-backdrop.show{display:block}
+  body.nav-open{overflow:hidden}
   .mobilebar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);
     border-bottom:1px solid var(--line);position:sticky;top:0;z-index:35}
   .g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -446,6 +454,7 @@ html[data-theme="dark"] .doc{background:#e9e4d8;color:#1a1a1a}
       <span class="spacer"></span>
       <a class="btn ghost sm" href="#/settings">⚙</a>
     </div>
+    <div class="nav-backdrop" id="navBackdrop"></div>
     <header class="topbar">
       <div>
         <div class="ttl" id="pageTitle">儀表板</div>
@@ -8938,6 +8947,9 @@ window.FORMS = [
     $("#pageCrumb").textContent = r.c;
     $$("#nav a").forEach((a) => a.classList.toggle("on", a.dataset.h === base));
     $("#sidebar").classList.remove("open");
+    const bd0 = $("#navBackdrop");
+    if (bd0) bd0.classList.remove("show");
+    document.body.classList.remove("nav-open");
     hideGlobalSearch(base);
     closeModal();
     window.scrollTo(0, 0);
@@ -10647,7 +10659,22 @@ window.FORMS = [
   });
 
   $("#themeBtn").onclick = toggleTheme;
-  $("#menuBtn").onclick = () => $("#sidebar").classList.toggle("open");
+  const setNav = (open) => {
+    const sb = $("#sidebar");
+    if (!sb) return;
+    sb.classList.toggle("open", open);
+    const bd = $("#navBackdrop");
+    if (bd) bd.classList.toggle("show", open);
+    document.body.classList.toggle("nav-open", open);
+  };
+  $("#menuBtn").onclick = (e) => {
+    e.stopPropagation();
+    setNav(!$("#sidebar").classList.contains("open"));
+  };
+  const navBd = $("#navBackdrop");
+  if (navBd) navBd.onclick = () => setNav(false);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setNav(false); });
+  window.addEventListener("hashchange", () => setNav(false));
   $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
   let searchT;
   $("#globalSearch").addEventListener("input", (e) => {
