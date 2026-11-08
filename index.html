@@ -376,6 +376,8 @@ html[data-theme="dark"] .doc{background:#e9e4d8;color:#1a1a1a}
   font-weight:600;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:.28s;z-index:200
 }
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:8px 0;border-radius:6px}
+.tscroll > table{margin:0}
 .modal{position:fixed;inset:0;background:rgba(10,16,24,.55);display:none;place-items:center;z-index:150;padding:20px}
 .modal.on{display:grid}
 .modal .box{background:var(--card);border-radius:16px;max-width:560px;width:100%;padding:24px;box-shadow:var(--shadow-lg)}
@@ -416,6 +418,13 @@ html[data-theme="dark"] .doc{background:#e9e4d8;color:#1a1a1a}
   .topbar .search:focus-within input::placeholder{color:var(--muted)}
   .topbar .ttl{font-size:14px}
   .topbar .crumb{display:none}
+  /* 手機：文件表格更緊湊；寬表格可左右滑動；標注可點 */
+  .doc table{font-size:11.5px}
+  .doc table th,.doc table td{padding:4px 6px}
+  .doc table.wide{min-width:560px}
+  .doc .hl{padding:0 1px;border-bottom-width:1px}
+  .toast{max-width:88vw;text-align:left;line-height:1.55;white-space:normal;font-weight:500}
+  .progressline .btn{flex:0 0 auto}
 }
 @media print{
   .sidebar,.topbar,.mobilebar,.exambar,.btn{display:none!important}
@@ -8785,12 +8794,12 @@ window.FORMS = [
   }
   const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
-  function toast(msg) {
+  function toast(msg, ms) {
     const t = $("#toast");
     t.textContent = msg;
     t.classList.add("on");
     clearTimeout(toast._t);
-    toast._t = setTimeout(() => t.classList.remove("on"), 1900);
+    toast._t = setTimeout(() => t.classList.remove("on"), ms || 1900);
   }
   function modal(html) {
     $("#modalBox").innerHTML = html;
@@ -9390,7 +9399,8 @@ window.FORMS = [
 
     $("#view").innerHTML =
       '<div class="progressline" style="margin-bottom:10px"><span>進度</span><div class="bar" style="flex:1"><i style="width:' + Math.round((PR.i) / PR.list.length * 100) + '%"></i></div>' +
-        '<span class="num">' + (PR.i + 1) + "/" + PR.list.length + "</span></div>" +
+        '<span class="num">' + (PR.i + 1) + "/" + PR.list.length + "</span>" +
+        '<button class="btn sm ghost" data-act="exitPractice" title="結束練習並返回">✕ 退出</button></div>' +
 
       '<div class="card pad">' +
         '<div class="qhead"><span class="pill">第 ' + partOf(q) + " 部份</span>" + (q.ref ? '<span class="pill gray">' + esc(q.ref) + "</span>" : "") +
@@ -9841,6 +9851,28 @@ window.FORMS = [
       (d.qs && d.qs.length ? '<div style="margin-top:16px"><h3 style="font-size:15px;margin-bottom:10px">文件分析題（' + d.qs.length + " 題）</h3>" +
         '<div id="docQ">' + d.qs.map((q, i) => docQ(q, i, d.id)).join("") + "</div></div>" : "");
     bindDocQs(d);
+
+    // 寬表格可橫向滑動；顏色標注可點按顯示說明（手機沒有 hover）
+    [$("#docBox"), $("#docZh")].filter(Boolean).forEach((box) => {
+      box.querySelectorAll("table").forEach((tb) => {
+        const cols = Math.max.apply(null, Array.from(tb.rows).map((r) => r.cells.length));
+        if (cols >= 4 && !(tb.parentElement && tb.parentElement.classList.contains("tscroll"))) {
+          tb.classList.add("wide");
+          const wrap = document.createElement("div");
+          wrap.className = "tscroll";
+          tb.parentNode.insertBefore(wrap, tb);
+          wrap.appendChild(tb);
+        }
+      });
+      box.querySelectorAll(".hl[title]").forEach((el) => {
+        el.setAttribute("tabindex", "0");
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", "解說：" + el.getAttribute("title"));
+        const show = (e) => { if (e) e.preventDefault(); toast(el.getAttribute("title"), 4500); };
+        el.addEventListener("click", show);
+        el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") show(e); });
+      });
+    });
   }
 
   function docQ(q, i, docId) {
@@ -10586,6 +10618,14 @@ window.FORMS = [
     if (act === "flag" && MK) return;
     if (act === "sheet") return mockSheet();
     if (act === "submitMock") return submitMock();
+    if (act === "exitPractice") {
+      const done = PR ? Object.keys(PR.answers || {}).length : 0;
+      if (done && !confirm("結束本次練習？已作答的 " + done + " 題紀錄會保留。")) return;
+      PR = null;
+      location.hash = "#/practice";
+      toast("已結束練習，紀錄已保留");
+      return;
+    }
     if (act === "clear") { const q = MK.list[MK.i]; delete MK.answers[q._no]; return runMock(); }
     if (act === "openDoc") return openDocModal(t.dataset.doc);
     if (act === "toggleZh") {
