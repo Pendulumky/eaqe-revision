@@ -422,6 +422,7 @@ html[data-theme="dark"] .doc{background:#e9e4d8;color:#1a1a1a}
   .doc table{font-size:11.5px}
   .doc table th,.doc table td{padding:4px 6px}
   .doc table.wide{min-width:560px}
+  .doc .sig{padding:0 2px;min-width:110px;max-width:100%}
   .doc .hl{padding:0 1px;border-bottom-width:1px}
   .toast{max-width:88vw;text-align:left;line-height:1.55;white-space:normal;font-weight:500}
   .progressline .btn{flex:0 0 auto}
@@ -9853,18 +9854,27 @@ window.FORMS = [
     bindDocQs(d);
 
     // 寬表格可橫向滑動；顏色標注可點按顯示說明（手機沒有 hover）
-    [$("#docBox"), $("#docZh")].filter(Boolean).forEach((box) => {
+    const wrapWide = (box) => {
+      if (!box) return;
+      const boxW = box.clientWidth || 360;
       box.querySelectorAll("table").forEach((tb) => {
+        if (tb.parentElement && tb.parentElement.classList.contains("tscroll")) return;
         const cols = Math.max.apply(null, Array.from(tb.rows).map((r) => r.cells.length));
-        if (cols >= 4 && !(tb.parentElement && tb.parentElement.classList.contains("tscroll"))) {
-          tb.classList.add("wide");
+        const over = tb.scrollWidth > boxW + 2;
+        if (cols >= 4 || over) {
+          if (cols >= 4) tb.classList.add("wide");
           const wrap = document.createElement("div");
           wrap.className = "tscroll";
           tb.parentNode.insertBefore(wrap, tb);
           wrap.appendChild(tb);
         }
       });
+    };
+    const bindHl = (box) => {
+      if (!box) return;
       box.querySelectorAll(".hl[title]").forEach((el) => {
+        if (el.dataset.hlbound) return;
+        el.dataset.hlbound = "1";
         el.setAttribute("tabindex", "0");
         el.setAttribute("role", "button");
         el.setAttribute("aria-label", "解說：" + el.getAttribute("title"));
@@ -9872,6 +9882,10 @@ window.FORMS = [
         el.addEventListener("click", show);
         el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") show(e); });
       });
+    };
+    [$("#docBox"), $("#docZh")].filter(Boolean).forEach((box) => { wrapWide(box); bindHl(box); });
+    requestAnimationFrame(() => {
+      [$("#docBox"), $("#docZh")].filter(Boolean).forEach((box) => { wrapWide(box); bindHl(box); });
     });
   }
 
